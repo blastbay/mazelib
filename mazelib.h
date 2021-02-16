@@ -317,9 +317,9 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
         y = ( uint32_t ) ( current_cell % height );
 
         /* Shuffle the directions. */
-        for ( i = 0; i < 4; ++i )
+        for ( i = 3; i; --i )
         {
-            uint8_t swap_index = ( uint8_t ) mazelib_prng_next_in_range ( &prng, 4 );
+            uint8_t swap_index = ( uint8_t ) mazelib_prng_next_in_range ( &prng, i + 1 );
             temp = directions[i];
             directions[i] = directions[swap_index];
             directions[swap_index] = temp;
