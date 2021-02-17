@@ -3,14 +3,18 @@
 *
 * Philip Bennefall - philip@blastbay.com
 *
-* See the end of this file for licensing terms.
+* See the end of this file for licensing terms, references and further reading.
 *
 * This is a single file, public domain C library which generates mazes using the so called growing tree algorithm.
-* The algorithm is highly configurable and generates very nice mazes of different styles.
+* The algorithm is highly configurable and generates nice mazes of varying styles.
 *
-* This code was inspired by two blog posts by Jamis Buck.
-* Maze Generation: Growing Tree algorithm (https://weblog.jamisbuck.org/2011/1/27/maze-generation-growing-tree-algorithm)
-* Mazes with Blockwise Geometry (https://weblog.jamisbuck.org/2015/10/31/mazes-blockwise-geometry.html)
+* The library generates mazes portably across platforms and C standard library implementations.
+* It comes bundled with a fast, high quality pseudo random number generator called xoshiro256++.
+* This ensures that given the same seed and configuration settings, the exact same maze will always be generated.
+*
+* The library has no global state, which means it can be used safely across multiple threads with a modicum of care.
+*
+* The library does not allocate any dynamic memory.
 *
 * USAGE
 *
@@ -21,9 +25,7 @@
 * You can then #include this file in other parts of the program as you would with any other header file.
 *
 * The library offers a high level API which allows you to get started with minimal effort,
-* and a low level API with a slightly higher learning curve which offers more control.
-*
-* The library does not allocate any dynamic memory; all buffer management is done by the user.
+* and a low level API with a slightly higher learning curve which offers more control by way of a callback function.
 *
 * The library can generate mazes in two formats.
 * 1. Compact: A grid of bitmask cells where the set bits indicate the directions in which it is possible to move.
@@ -40,7 +42,7 @@
 *
 * 4. Call mazelib_get_cell_index to get the specific cell index in the buffer that you want to examine.
 *
-* 5. Examine the given cell, either by checking the presence of certain bits if you have a compact maze,
+* 5. Examine the given cell by checking the presence of certain bits if you have a compact maze,
 * or by checking if the cell contains 0 or 1 for a blockwise maze.
 *
 * That's it! Refer to the API documentation below, as well as the provided example programs for more details.
@@ -66,6 +68,8 @@ extern "C" {
 #define mazelib_south 8
 
     /* COMMON FUNCTIONS */
+
+    /* These functions are required by both the low and the high level API. */
 
     /*
     * Get the required buffer size in bytes for a maze of the given width, height and format.
@@ -549,7 +553,20 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
 
 #endif /* MAZELIB_IMPLEMENTATION */
 
-/* REVISION HISTORY
+/* REFERENCES
+*
+* The library was inspired by two blog posts by Jamis Buck.
+* Maze Generation: Growing Tree algorithm (https://weblog.jamisbuck.org/2011/1/27/maze-generation-growing-tree-algorithm)
+* Mazes with Blockwise Geometry (https://weblog.jamisbuck.org/2015/10/31/mazes-blockwise-geometry.html)
+*
+* The library ships with a fast, high quality pseudo random number generator called xoshiro256++,
+* as well as another generator called splitmix64 which is used for seeding from a 64 bit integer.
+* Both of these algorithms are in the public domain.
+* For more details see http://prng.di.unimi.it/
+*
+* Got the idea for how to generate uniformly distributed integers in a given range without bias from https://github.com/camel-cdr/cauldron/
+*
+* REVISION HISTORY
 *
 * Version 1.0 - 2021-02-14
 * Initial release.
