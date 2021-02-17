@@ -29,11 +29,38 @@ extern "C" {
 
     /* PUBLIC API */
 
+    /* COMMON FUNCTIONS */
+
     uint64_t mazelib_get_required_buffer_size ( uint32_t width, uint32_t height, uint8_t blockwise );
+
+    uint64_t mazelib_get_cell_index ( uint32_t x, uint32_t y, uint32_t height );
+
+    /* HIGH LEVEL API */
 
     uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_seed, int8_t random_threshold_percent, uint8_t blockwise, uint8_t* output, uint64_t output_size );
 
-    uint64_t mazelib_get_cell_index ( uint32_t x, uint32_t y, uint32_t height );
+    /* LOW LEVEL API */
+
+    /* PRNG */
+    typedef struct mazelib_prng mazelib_prng;
+    struct mazelib_prng
+    {
+        uint64_t s[4];
+    };
+
+    /* Seed the PRNG from a 64 bit unsigned integer. */
+    void mazelib_prng_seed ( mazelib_prng* prng, uint64_t x );
+
+    /* Generate the next unsigned 64 bit random number. */
+    uint64_t mazelib_prng_next ( mazelib_prng* prng );
+
+    /* Generate a random number in the range 0...range (exclusive). */
+    uint64_t mazelib_prng_next_in_range ( mazelib_prng* prng, uint64_t range );
+
+    /* Cell Selection Callback */
+    typedef uint64_t ( *mazelib_cell_selection_callback ) ( uint64_t count, mazelib_prng* prng, void* user );
+
+    uint64_t mazelib_generate_extended ( uint32_t width, uint32_t height, mazelib_prng* prng, mazelib_cell_selection_callback cell_selection_callback, void* user, uint8_t blockwise, uint8_t* output, uint64_t output_size );
 
 #ifdef __cplusplus
 }
@@ -107,13 +134,7 @@ uint64_t mazelib_get_required_buffer_size ( uint32_t width, uint32_t height, uin
     return size;
 }
 
-typedef struct mazelib_prng mazelib_prng;
-struct mazelib_prng
-{
-    uint64_t s[4];
-};
-
-static void mazelib_prng_seed ( mazelib_prng* prng, uint64_t x )
+void mazelib_prng_seed ( mazelib_prng* prng, uint64_t x )
 {
     unsigned int i;
 
@@ -133,7 +154,7 @@ static uint64_t mazelib_prng_rotl ( const uint64_t x, int k )
     return ( x << k ) | ( x >> ( 64 - k ) );
 }
 
-static uint64_t mazelib_prng_next ( mazelib_prng* prng )
+uint64_t mazelib_prng_next ( mazelib_prng* prng )
 {
     uint64_t* s = prng->s;
     const uint64_t result = mazelib_prng_rotl ( s[0] + s[3], 23 ) + s[0];
@@ -152,7 +173,7 @@ static uint64_t mazelib_prng_next ( mazelib_prng* prng )
     return result;
 }
 
-static uint64_t mazelib_prng_next_in_range ( mazelib_prng* prng, uint64_t range )
+uint64_t mazelib_prng_next_in_range ( mazelib_prng* prng, uint64_t range )
 {
     uint64_t x, r;
     do
@@ -199,10 +220,9 @@ static void mazelib_assign_cell ( uint8_t* mem, uint8_t cell_bytes, uint64_t cel
     };
 }
 
-uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_seed, int8_t random_threshold_percent, uint8_t blockwise, uint8_t* output, uint64_t output_size )
+uint64_t mazelib_generate_extended ( uint32_t width, uint32_t height, mazelib_prng* prng, mazelib_cell_selection_callback cell_selection_callback, void* user, uint8_t blockwise, uint8_t* output, uint64_t output_size )
 {
     uint64_t result, temp, i;
-    mazelib_prng prng;
     const uint64_t required_size = mazelib_get_required_buffer_size ( width, height, blockwise );
     const uint8_t cell_bytes = mazelib_get_cell_bytes_required_for_dimensions ( width, height );
     uint8_t* cells;
@@ -218,19 +238,16 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
     {
         return 0;
     }
+    if ( prng == NULL )
+    {
+        return 0;
+    }
+    if ( cell_selection_callback == NULL )
+    {
+        return 0;
+    }
 
     output_size = required_size;
-
-    mazelib_prng_seed ( &prng, random_seed );
-
-    if ( random_threshold_percent < 0 )
-    {
-        random_threshold_percent = ( int8_t ) mazelib_prng_next_in_range ( &prng, 101 );
-    }
-    else if ( random_threshold_percent > 100 )
-    {
-        random_threshold_percent = 100;
-    }
 
     result = width;
     result *= height;
@@ -263,7 +280,7 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
     }
 
     /* Start by inserting a random cell. */
-    temp = mazelib_get_cell_index ( ( uint32_t ) mazelib_prng_next_in_range ( &prng, width ), ( uint32_t ) mazelib_prng_next_in_range ( &prng, height ), height );
+    temp = mazelib_get_cell_index ( ( uint32_t ) mazelib_prng_next_in_range ( prng, width ), ( uint32_t ) mazelib_prng_next_in_range ( prng, height ), height );
     mazelib_assign_cell ( cells, cell_bytes, 0, temp );
 
     while ( cells_size )
@@ -276,13 +293,10 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
 
         if ( cells_size > 1 )
         {
-            if ( random_threshold_percent < 100 && ( int8_t ) mazelib_prng_next_in_range ( &prng, 101 ) > random_threshold_percent )
+            cell_index = cell_selection_callback ( cells_size, prng, user );
+            if ( cell_index >= cells_size )
             {
-                cell_index = mazelib_prng_next_in_range ( &prng, cells_size );
-            }
-            else
-            {
-                cell_index = cells_size - 1;
+                return 0;    /* The callback returned a value outside the allowed range, so we abort. */
             }
         }
 
@@ -319,7 +333,7 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
         /* Shuffle the directions. */
         for ( i = 3; i; --i )
         {
-            uint8_t swap_index = ( uint8_t ) mazelib_prng_next_in_range ( &prng, i + 1 );
+            uint8_t swap_index = ( uint8_t ) mazelib_prng_next_in_range ( prng, i + 1 );
             temp = directions[i];
             directions[i] = directions[swap_index];
             directions[swap_index] = temp;
@@ -467,6 +481,34 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
     }
 
     return result;
+}
+
+static uint64_t mazelib_high_level_cell_selection_callback ( uint64_t count, mazelib_prng* prng, void* user )
+{
+    int8_t* random_threshold_percent = ( int8_t* ) user;
+    if ( *random_threshold_percent < 100 && ( int8_t ) mazelib_prng_next_in_range ( prng, 101 ) > *random_threshold_percent )
+    {
+        return mazelib_prng_next_in_range ( prng, count );
+    }
+    return count - 1;
+}
+
+uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_seed, int8_t random_threshold_percent, uint8_t blockwise, uint8_t* output, uint64_t output_size )
+{
+    mazelib_prng prng;
+
+    mazelib_prng_seed ( &prng, random_seed );
+
+    if ( random_threshold_percent < 0 )
+    {
+        random_threshold_percent = ( int8_t ) mazelib_prng_next_in_range ( &prng, 101 );
+    }
+    else if ( random_threshold_percent > 100 )
+    {
+        random_threshold_percent = 100;
+    }
+
+    return mazelib_generate_extended ( width, height, &prng, mazelib_high_level_cell_selection_callback, ( void* ) &random_threshold_percent, blockwise, output, output_size );
 }
 
 #endif /* MAZELIB_IMPLEMENTATION */
