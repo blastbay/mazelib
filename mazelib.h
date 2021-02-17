@@ -5,6 +5,9 @@
 *
 * See the end of this file for licensing terms.
 *
+* This is a single file, public domain C library which generates mazes using the so called growing tree algorithm.
+* The algorithm is highly configurable and generates very nice mazes of different styles.
+*
 * This code was inspired by two blog posts by Jamis Buck.
 * Maze Generation: Growing Tree algorithm (https://weblog.jamisbuck.org/2011/1/27/maze-generation-growing-tree-algorithm)
 * Mazes with Blockwise Geometry (https://weblog.jamisbuck.org/2015/10/31/mazes-blockwise-geometry.html)
@@ -16,6 +19,31 @@
 * #include "mazelib.h"
 *
 * You can then #include this file in other parts of the program as you would with any other header file.
+*
+* The library offers a high level API which allows you to get started with minimal effort,
+* and a low level API with a slightly higher learning curve which offers more control.
+*
+* The library does not allocate any dynamic memory; all buffer management is done by the user.
+*
+* The library can generate mazes in two formats.
+* 1. Compact: A grid of bitmask cells where the set bits indicate the directions in which it is possible to move.
+* 2. Blockwise: A so called blockwise grid where the walls take up actual space, and where each cell contains the number 0 for empty space and 1 for a wall.
+*
+* The usage pattern for the high level API goes something like this:
+*
+* 1. Call mazelib_get_required_buffer_size with your desired width and height, and decide whether you want a compact or a blockwise maze.
+*
+* 2. Allocate the required amount of space as indicated by the function.
+*
+* 3. Call mazelib_generate. This function returns the number of bytes from the beginning of your buffer where the generated maze has been stored.
+* For both compact and blockwise mazes, the result is stored as a one dimensional array of bytes where each byte represents one cell.
+*
+* 4. Call mazelib_get_cell_index to get the specific cell index in the buffer that you want to examine.
+*
+* 5. Examine the given cell, either by checking the presence of certain bits if you have a compact maze,
+* or by checking if the cell contains 0 or 1 for a blockwise maze.
+*
+* That's it! Refer to the API documentation below, as well as the provided example programs for more details.
 */
 
 #ifndef MAZELIB_H
@@ -31,6 +59,7 @@ extern "C" {
 
     /* MACROS */
 
+    /* Bitmask values for directions */
 #define mazelib_west 1
 #define mazelib_east 2
 #define mazelib_north 4
@@ -38,8 +67,13 @@ extern "C" {
 
     /* COMMON FUNCTIONS */
 
+    /*
+    * Get the required buffer size in bytes for a maze of the given width, height and format.
+    * If any of the parameters are invalid, 0 is returned.
+    */
     uint64_t mazelib_get_required_buffer_size ( uint32_t width, uint32_t height, uint8_t blockwise );
 
+    /* Return the byte offset for a cell given a set of coordinates and the height of the maze. */
     uint64_t mazelib_get_cell_index ( uint32_t x, uint32_t y, uint32_t height );
 
     /* HIGH LEVEL API */
