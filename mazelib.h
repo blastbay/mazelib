@@ -29,6 +29,13 @@ extern "C" {
 
     /* PUBLIC API */
 
+    /* MACROS */
+
+#define mazelib_west 1
+#define mazelib_east 2
+#define mazelib_north 4
+#define mazelib_south 8
+
     /* COMMON FUNCTIONS */
 
     uint64_t mazelib_get_required_buffer_size ( uint32_t width, uint32_t height, uint8_t blockwise );
@@ -75,11 +82,6 @@ extern "C" {
 #include <stddef.h>
 #include <string.h>
 #include <assert.h>
-
-#define mazelib_west 1
-#define mazelib_east 2
-#define mazelib_north 4
-#define mazelib_south 8
 
 static uint8_t mazelib_get_cell_bytes_required_for_dimensions ( uint32_t width, uint32_t height )
 {
