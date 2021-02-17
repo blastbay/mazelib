@@ -488,7 +488,7 @@ uint64_t mazelib_generate_extended ( uint32_t width, uint32_t height, mazelib_pr
 static uint64_t mazelib_high_level_cell_selection_callback ( uint64_t count, mazelib_prng* prng, void* user )
 {
     int8_t* random_threshold_percent = ( int8_t* ) user;
-    if ( *random_threshold_percent > 0 && ( int8_t ) mazelib_prng_next_in_range ( prng, 101 ) <= *random_threshold_percent )
+    if ( *random_threshold_percent > 0 && ( int8_t ) mazelib_prng_next_in_range ( prng, 101 ) < *random_threshold_percent )
     {
         return mazelib_prng_next_in_range ( prng, count );
     }
