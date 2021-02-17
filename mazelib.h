@@ -577,7 +577,7 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
 This software is available under 2 licenses -- choose whichever you prefer.
 ------------------------------------------------------------------------------
 ALTERNATIVE A - MIT No Attribution License
-Copyright (c) 2019 Philip Bennefall
+Copyright (c) 2021 Philip Bennefall
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
