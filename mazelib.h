@@ -16,6 +16,21 @@
 *
 * The library does not allocate any dynamic memory.
 *
+* ALGORITHM DESCRIPTION
+*
+* The algorithm is flexible, but quite simple. Here's an overview:
+* 1. Start with an empty list, and add a random cell to it.
+* 2. While the list is not empty, select a cell from it.
+* 3. Select an unvisited neighboring cell at random, and add it to the end of the list.
+* 4. Carve a two way passage between the cell and the chosen neighbor, and mark both cells as visited.
+* 5. If there are no unvisited neighbors in step 3, remove the cell from the list.
+* 6. Return to step 2.
+*
+* The part that makes this algorithm especially interesting is how cells are chosen from the list in step 2.
+* If you always choose the cell at the end of the list, you get a maze with a very high river factor (AKA long passages with few dead ends).
+* If you instead choose a cell at random, you get a maze with a very low river factor (AKA short passages with many dead ends).
+* You can also do something in between, such as selecting the last cell in the list 50% of the time and a random one the other 50%.
+*
 * USAGE
 *
 * This is a single-file library. To use it, do something like the following in one .c file.
@@ -27,9 +42,14 @@
 * The library offers a high level API which allows you to get started with minimal effort,
 * and a low level API with a slightly higher learning curve which offers more control by way of a callback function.
 *
-* The library can generate mazes in two formats.
-* 1. Compact: A grid of bitmask cells where the set bits indicate the directions in which it is possible to move.
+* The library can generate mazes in two formats, with an arbitrary width and height.
+* 1. Compact: A grid of bitmask cells where the set bits indicate the directions in which it is possible to move. For example, if the mazelib_west bit is set, it is possible to walk to the west.
 * 2. Blockwise: A so called blockwise grid where the walls take up actual space, and where each cell contains the number 0 for empty space and 1 for a wall.
+*
+* If generating a maze in the compact format, the final output will use width*height bytes.
+*
+* If generating a maze in the blockwise format, the final output will use ((width*2)+1)*((height*2)+1) bytes.
+* A maze in the blockwise format will be entirely surrounded by walls.
 *
 * The usage pattern for the high level API goes something like this:
 *
@@ -69,7 +89,7 @@ extern "C" {
 
     /* COMMON FUNCTIONS */
 
-    /* These functions are required by both the low and the high level API. */
+    /* These functions are useful when using both the low and the high level API. */
 
     /*
     * Get the required buffer size in bytes for a maze of the given width, height and format.
@@ -82,9 +102,48 @@ extern "C" {
 
     /* HIGH LEVEL API */
 
+    /* Generate a maze using the high level API.
+    *
+    * This function generates a maze in either the compact or blockwise format.
+    *
+    * The space for the final output and the required temporary storage has to have been allocated by the user before invoking this function.
+    * To determine how much space is needed, first call mazelib_get_required_buffer_size.
+    *
+    * The parameters are:
+    * width - The width of the maze.
+    *
+    * height - The height of the maze.
+    *
+    * random_seed - The seed that should be used to initialize the internal pseudo random number generator.
+    * Using the same seed and configuration settings will always produce the exact same result.
+    *
+    * random_threshold_percent - A number between 0 and 100 (inclusive), which determines how much randomness that should be used when selecting cells.
+    * A value of 0 will always select the most recent cell, while a value of 100 will always select one at random.
+    * If the value is less than 0, it will be randomized automatically to be between 0 and 100.
+    *
+    * blockwise - If set to nonzero (true), the function will generate a blockwise maze.
+    * If set to 0 (false), the generated maze will be in the compact format.
+    *
+    * output - A buffer with at least the amount of space indicated by the mazelib_get_required_buffer_size function.
+    *
+    * output_size - The amount of space in output, in bytes.
+    *
+    * The function returns the number of bytes in the buffer that are used to store the final result.
+    */
     uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_seed, int8_t random_threshold_percent, uint8_t blockwise, uint8_t* output, uint64_t output_size );
 
     /* LOW LEVEL API */
+
+    /*
+    * The low level API differs from the high level API in two ways:
+    * 1. The user is responsible for managing the prng.
+    * 2. The user must supply a callback which selects a number within a specified range (this is how cells are chosen for backtracking).
+    *
+    * First, create a mazelib_prng structure and seed it by calling mazelib_prng_seed.
+    * Then, implement your callback.
+    * The callback receives a value called count, and should return a value between 0 and count-1 (see the callback description below for more details).
+    * When you are ready to generate your maze, call mazelib_generate_extended.
+    */
 
     /* PRNG */
     typedef struct mazelib_prng mazelib_prng;
@@ -102,9 +161,50 @@ extern "C" {
     /* Generate a random number in the range 0...range (exclusive). */
     uint64_t mazelib_prng_next_in_range ( mazelib_prng* prng, uint64_t range );
 
-    /* Cell Selection Callback */
+    /* Cell Selection Callback
+    *
+    * This callback is used to select a cell to which the algorithm should attempt to backtrack.
+    * The function should return a value between 0 and count (exclusive).
+    * The function receives a copy of the prng, as randomness is often an important component when selecting cells.
+    * For example you might select the most recent cell (AKA count-1) 50% of the time, and a random value between 0 and count-1 the other 50%.
+    *
+    * The user pointer is the same as was given to mazelib_generate_extended, and is not modified or accessed by the library in any way.
+    *
+    * If the function returns a value equal to or greater than count, processing will be aborted and mazelib_generate_extended will return 0.
+    */
     typedef uint64_t ( *mazelib_cell_selection_callback ) ( uint64_t count, mazelib_prng* prng, void* user );
 
+    /* Generate a maze using the low level API.
+    *
+    * This function generates a maze in either the compact or blockwise format.
+    *
+    * The space for the final output and the required temporary storage has to have been allocated by the user before invoking this function.
+    * To determine how much space is needed, first call mazelib_get_required_buffer_size.
+    *
+    * The parameters are:
+    * width - The width of the maze.
+    *
+    * height - The height of the maze.
+    *
+    * prng - An already seeded prng instance.
+    * If this parameter is NULL, the function aborts with a return value of 0.
+    *
+    * cell_selection_callback - The callback that is used to select a cell to which the algorithm should attempt to backtrack.
+    * If this parameter is NULL, the function aborts with a return value of 0.
+    *
+    * user - A pointer which is passed to the cell selection callback.
+    * The library does not modify or access this pointer in any way.
+    *
+    * blockwise - If set to nonzero (true), the function will generate a blockwise maze.
+    * If set to 0 (false), the generated maze will be in the compact format.
+    *
+    * output - A buffer with at least the amount of space indicated by the mazelib_get_required_buffer_size function.
+    *
+    * output_size - The amount of space in output, in bytes.
+    *
+    * The function returns the number of bytes in the buffer that are used to store the final result.
+    * If the cell selection callback returns a value equal to or greater than count, this function aborts and returns 0.
+    */
     uint64_t mazelib_generate_extended ( uint32_t width, uint32_t height, mazelib_prng* prng, mazelib_cell_selection_callback cell_selection_callback, void* user, uint8_t blockwise, uint8_t* output, uint64_t output_size );
 
 #ifdef __cplusplus
