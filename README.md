@@ -44,6 +44,7 @@ You can also do something in between, such as selecting the last cell in the lis
 
 # References
 The library was inspired by two blog posts by Jamis Buck.
+
 Maze Generation: Growing Tree algorithm: https://weblog.jamisbuck.org/2011/1/27/maze-generation-growing-tree-algorithm
 
 Mazes with Blockwise Geometry: https://weblog.jamisbuck.org/2015/10/31/mazes-blockwise-geometry.html
