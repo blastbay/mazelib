@@ -44,8 +44,9 @@ You can also do something in between, such as selecting the last cell in the lis
 
 # References
 The library was inspired by two blog posts by Jamis Buck.
-Maze Generation: Growing Tree algorithm (https://weblog.jamisbuck.org/2011/1/27/maze-generation-growing-tree-algorithm)
-Mazes with Blockwise Geometry (https://weblog.jamisbuck.org/2015/10/31/mazes-blockwise-geometry.html)
+Maze Generation: Growing Tree algorithm: https://weblog.jamisbuck.org/2011/1/27/maze-generation-growing-tree-algorithm
+
+Mazes with Blockwise Geometry: https://weblog.jamisbuck.org/2015/10/31/mazes-blockwise-geometry.html
 
 The library ships with a fast, high quality pseudo random number generator called xoshiro256++, as well as another generator called splitmix64 which is used for seeding from a 64 bit integer.
 Both of these algorithms are in the public domain.
