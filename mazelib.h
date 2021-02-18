@@ -1,5 +1,5 @@
 /* Maze Generation Library
-* Mazelib version 1.0 - 2021-02-14
+* Mazelib version 1.0 - 2021-02-18
 *
 * Philip Bennefall - philip@blastbay.com
 *
@@ -65,7 +65,7 @@
 * 5. Examine the given cell by checking the presence of certain bits if you have a compact maze,
 * or by checking if the cell contains 0 or 1 for a blockwise maze.
 *
-* That's it! Refer to the API documentation below, as well as the provided example programs for more details.
+* That's it! Refer to the API documentation below for more details.
 */
 
 #ifndef MAZELIB_H
@@ -89,7 +89,7 @@ extern "C" {
 
     /* COMMON FUNCTIONS */
 
-    /* These functions are useful when using both the low and the high level API. */
+    /* These functions are useful when working with both the low and the high level API. */
 
     /*
     * Get the required buffer size in bytes for a maze of the given width, height and format.
@@ -136,7 +136,7 @@ extern "C" {
 
     /*
     * The low level API differs from the high level API in two ways:
-    * 1. The user is responsible for managing the prng.
+    * 1. The user is responsible for managing the pseudo random number generator (prng).
     * 2. The user must supply a callback which selects a number within a specified range (this is how cells are chosen for backtracking).
     *
     * First, create a mazelib_prng structure and seed it by calling mazelib_prng_seed.
@@ -668,7 +668,7 @@ uint64_t mazelib_generate ( uint32_t width, uint32_t height, uint64_t random_see
 *
 * REVISION HISTORY
 *
-* Version 1.0 - 2021-02-14
+* Version 1.0 - 2021-02-18
 * Initial release.
 */
 
